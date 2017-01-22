@@ -23,6 +23,11 @@ Graph::~Graph() {
 	delete[] adjacencyMatrix;
 }
 
+bool Graph::IsAdjacent(string label1, string label2)
+{
+	return IsAdjacent(GetVertexIndex(label1), GetVertexIndex(label2));
+}
+
 
 bool Graph::IsAdjacent(int x, int y) {
 	if (x < size && y < size)
@@ -38,6 +43,11 @@ void Graph::AddEdge(int road, int cross1, int cross2) {
 	int startVertex = GetVertexIndex(GetVertexLabel(road, cross1));
 	int endVertex = GetVertexIndex(GetVertexLabel(road, cross2));
 	AddEdge(startVertex, endVertex);
+}
+
+string Graph::GetLabel(int road1, int road2)
+{
+	return GetVertexLabel(road1, road2);
 }
 
 string Graph::GetVertexLabel(int r1, int r2) {
