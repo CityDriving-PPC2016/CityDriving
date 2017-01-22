@@ -1,5 +1,10 @@
 #include "Debugger.h"
 
+#include <sstream>
+#include <string>
+#include "math.h"
+#include "windows.h"
+
 bool launchDebugger()
 {
 	// Get System directory, typically c:\windows\system32
