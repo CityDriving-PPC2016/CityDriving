@@ -25,12 +25,12 @@ Graph::~Graph() {
 
 bool Graph::IsAdjacent(string label1, string label2)
 {
-	return IsAdjacent(GetVertexIndex(label1), GetVertexIndex(label2));
+	return IsAdjacent(GetVertexIndex(label1, true), GetVertexIndex(label2, true));
 }
 
 
 bool Graph::IsAdjacent(int x, int y) {
-	if (x < size && y < size)
+	if (x > 0 && x < size && y > 0 && y < size)
 		return adjacencyMatrix[x][y];
 	else {
 		stringstream s = stringstream();
@@ -50,6 +50,26 @@ string Graph::GetLabel(int road1, int road2)
 	return GetVertexLabel(road1, road2);
 }
 
+int Graph::GetIndex(string label)
+{
+	return GetVertexIndex(label, true);
+}
+
+list<int> Graph::GetAdjacents(int node)
+{
+	list<int> adj = list<int>();
+	for (int i = 0; i < size; i++) {
+		if (adjacencyMatrix[node][i])
+			adj.push_back(i);
+	}
+	return adj;
+}
+
+int Graph::Size()
+{
+	return size;
+}
+
 string Graph::GetVertexLabel(int r1, int r2) {
 	stringstream s = stringstream();
 	if (r1 < r2)
@@ -59,11 +79,13 @@ string Graph::GetVertexLabel(int r1, int r2) {
 	return s.str();
 }
 
-int Graph::GetVertexIndex(string label) {
+int Graph::GetVertexIndex(string label, bool getOnly) {
 	map<string, int>::iterator pos = pointMap.find(label);
 	if (pos != pointMap.end()) {
 		return pos->second;
 	}
+	else if (getOnly)
+		return -1;
 	else if (pmHead >= size)
 		throw "Exceded the vertext count";
 	else {
