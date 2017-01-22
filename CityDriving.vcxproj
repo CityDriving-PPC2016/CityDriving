@@ -156,11 +156,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Debugger.cpp" />
+    <ClCompile Include="Graph.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Debugger.h" />
+    <ClInclude Include="Graph.h" />
     <ClInclude Include="Main.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="input.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
