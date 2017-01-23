@@ -29,13 +29,19 @@ int main(int argc, char* argv[]) {
 
 		Master master;
 		master.ReadGraph();
-		master.SetSearchPoints(0, 0, 0, 0);
+		master.SetSearchPoints(1, 2, 4, 1);
 		master.PrepareJobs(worldSize);
+
+		master.DispatchGraph();
 
 		cout << endl << "Master: " << rank;
 	}
 	else {
 		// Slaves
+
+		Worker worker;
+		worker.ReceiveGraph();
+
 		cout << endl << "Slave: " << rank;
 	}
 	MPI_Finalize();

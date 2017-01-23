@@ -14,6 +14,8 @@ private:
 public:
 	Job(int nodeCount);
 
+	int LastNode();
+
 	int operator[] (const int index);
 
 	Job operator+(const int node);
@@ -22,4 +24,4 @@ public:
 	Job copy();
 };
 
-#endif
+#endif // !JOB_H_DEF

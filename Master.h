@@ -21,9 +21,9 @@ private:
 	vector<Job*> jobs;
 public:
 	void ReadGraph(bool withOutput = false);
-	void PrepareJobs(int worldSize);
-
 	void SetSearchPoints(int x1, int x2, int y1, int y2);
+	void PrepareJobs(int worldSize);
+	void DispatchGraph();
 };
 
 #endif // !MASTER_H_DEF

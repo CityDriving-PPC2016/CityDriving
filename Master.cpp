@@ -2,6 +2,8 @@
 #include "Graph.h"
 #include "Job.h"
 
+#include "mpi.h"
+
 #include <iostream>
 #include <list>
 
@@ -73,6 +75,17 @@ void Master::PrepareJobs(int worldSize)
 		}
 	}
 
+}
+
+void Master::DispatchGraph()
+{
+	char* data;
+	int dataSize = graph->data(data);
+	
+	MPI_Bcast(&dataSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(data, dataSize, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+	delete[] data;
 }
 
 void Master::SetSearchPoints(int x1, int x2, int y1, int y2)

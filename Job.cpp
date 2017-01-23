@@ -6,6 +6,11 @@ Job::Job(int nodeCount)
 	data = vector<int>(nodeCount, 0);
 }
 
+int Job::LastNode()
+{
+	return max;
+}
+
 int Job::operator[](const int index)
 {
 	return data[index];
