@@ -2,7 +2,6 @@
 
 #include <sstream>
 #include <iostream>
-#include <vector>
 
 Graph::Graph(int vertexCount)
 {
@@ -12,6 +11,29 @@ Graph::Graph(int vertexCount)
 	for (int i = 0; i < size; i++)
 	{
 		adjacencyMatrix[i] = (bool*)calloc(size, sizeof(bool));
+	}
+}
+
+Graph::Graph(char * data)
+{
+	char* end = data;
+	memcpy(&size, end, sizeof(int));
+	end += sizeof(int);
+
+	memcpy(&pmHead, end, sizeof(int));
+	end += sizeof(int);
+
+	for (int i = 0; i < size; i++) {
+		string l = string(end);
+		pointMap[l] = i;
+		end += l.length() + 1;
+	}
+
+	adjacencyMatrix = new bool*[size];
+	for (int i = 0; i < size; i++) {
+		adjacencyMatrix[i] = new bool[size];
+		memcpy(adjacencyMatrix[i], end, size);
+		end += size;
 	}
 }
 
@@ -37,6 +59,16 @@ bool Graph::IsAdjacent(int x, int y) {
 		s << "Index outside bounds: " << x << ", " << y;
 		throw s.str().c_str();
 	}
+}
+
+vector<string> Graph::orderedLabels()
+{
+	vector<string> labels(size);
+	map<string, int>::iterator it = pointMap.begin();
+	for (; it != pointMap.end(); it++) {
+		labels[it->second] = it->first;
+	}
+	return labels;
 }
 
 void Graph::AddEdge(int road, int cross1, int cross2) {
@@ -68,6 +100,38 @@ list<int> Graph::GetAdjacents(int node)
 int Graph::Size()
 {
 	return size;
+}
+
+int Graph::data(char*& buffer)
+{
+	vector<string> labels = orderedLabels();
+	int lSize = 0;
+	for (int i = 0; i < size; i++) {
+		lSize += labels[i].length();
+	}
+
+	int dataSize = size*size + 8 + lSize + size;
+
+	char* data = new char[dataSize];
+	char* end = data;
+	memcpy(end, &size, sizeof(int));
+	end += sizeof(int);
+	memcpy(end, &pmHead, sizeof(int));
+	end += sizeof(int);
+	for (int i = 0; i < size; i++) {
+		memcpy(end, labels[i].data(), labels[i].length());
+		end += labels[i].length();
+		end[0] = 0;
+		end++;
+	}
+
+	for (int i = 0; i < size; i++) {
+		memcpy(end, adjacencyMatrix[i], size);
+		end += size;
+	}
+
+	buffer = data;
+	return dataSize;
 }
 
 string Graph::GetVertexLabel(int r1, int r2) {
@@ -121,13 +185,9 @@ void Graph::RemoveEdge(int x, int y)
 
 void Graph::Print()
 {
-	cout << endl;
-	vector<string> labels(size);
-	map<string, int>::iterator it = pointMap.begin();
-	for (; it != pointMap.end(); it++) {
-		labels[it->second] = it->first;
-	}
-	cout << "\t";
+	vector<string> labels = orderedLabels();
+
+	cout << endl << "\t";
 	for (int i = 0; i < size; i++) {
 		cout << labels[i] << "\t";
 	}

@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 #include <list>
+#include <vector>
 using namespace std;
 
 class Graph {
@@ -21,8 +22,13 @@ protected:
 	void AddEdge(int x, int y);
 	void RemoveEdge(int x, int y);
 	bool IsAdjacent(int x, int y);
+
+	vector<string> orderedLabels();
 public:
 	Graph(int vertexCount);
+
+	Graph(char* data);
+
 	~Graph();
 	bool IsAdjacent(string label1, string label2);
 	void AddEdge(int road, int cross1, int cross2);
@@ -31,7 +37,9 @@ public:
 	list<int> GetAdjacents(int node);
 	int Size();
 
+	int data(char*& buffer);
+
 	void Print();
 };
 
-#endif
+#endif // !GRAPH_H_DEF
