@@ -32,6 +32,11 @@ void Worker::ReceiveGraph()
 	delete[] data;
 }
 
+void Worker::ReceiveEndPoint()
+{
+	MPI_Bcast(&endPoint, 1, MPI_INT, 0, MPI_COMM_WORLD);
+}
+
 bool Worker::ReceiveWork()
 {
 	int size;

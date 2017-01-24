@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
 		master.PrepareJobs(worldSize);
 
 		master.DispatchGraph();
+		master.DispatchEndPoint();
 		master.DispatchJobs(worldSize);
 
 		master.WaitForResponse();
@@ -44,6 +45,7 @@ int main(int argc, char* argv[]) {
 
 		Worker worker;
 		worker.ReceiveGraph();
+		worker.ReceiveEndPoint();
 		if (!worker.ReceiveWork())
 			worker.WaitForWork();
 		do {
