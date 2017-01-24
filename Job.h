@@ -10,9 +10,11 @@ struct Job
 {
 private:
 	int max;
-	vector<int> data;
+	vector<int> jobData;
 public:
+	Job(const Job& job);
 	Job(int nodeCount);
+	Job(char* data, int size);
 
 	int LastNode();
 
@@ -21,7 +23,7 @@ public:
 	Job operator+(const int node);
 	Job operator+=(const int node);
 
-	Job copy();
+	int data(char*& buffer);
 };
 
 #endif // !JOB_H_DEF
