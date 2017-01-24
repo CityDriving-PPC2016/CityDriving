@@ -122,6 +122,12 @@ void Master::DispatchGraph()
 	delete[] data;
 }
 
+void Master::DispatchEndPoint()
+{
+	int endIndex = graph->GetIndex(endPoint);
+	MPI_Bcast(&endIndex, 1, MPI_INT, 0, MPI_COMM_WORLD);
+}
+
 void Master::DispatchJobs(int worldSize)
 {
 	jobsToWaitFor = 0;

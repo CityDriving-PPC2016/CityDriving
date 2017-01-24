@@ -33,7 +33,7 @@ public:
 	void SetSearchPoints(int x1, int x2, int y1, int y2);
 	void PrepareJobs(int worldSize);
 	void DispatchGraph();
-
+	void DispatchEndPoint();
 	void DispatchJobs(int worldSize);
 
 	void WaitForResponse();
