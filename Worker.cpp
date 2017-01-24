@@ -97,4 +97,6 @@ bool Worker::WaitForWork(int source)
 
 void Worker::FindRoutes()
 {
+	char msg = MSG_RESULTS;
+	MPI_Send(&msg, 1, MPI_CHAR, 0, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD);
 }
