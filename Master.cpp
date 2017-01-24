@@ -161,7 +161,7 @@ void Master::DispatchJobs(int worldSize)
 
 void Master::WaitForResponse()
 {
-	while (waitingWorkers.size() && workersWithJobsToGive.size() && jobsToWaitFor > 0) {
+	while (workersWithJobsToGive.size() || jobsToWaitFor > 0) {
 		char msg;
 		MPI_Status status;
 		MPI_Recv(&msg, 1, MPI_CHAR, MPI_ANY_SOURCE, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD, &status);
@@ -197,6 +197,7 @@ void Master::WaitForResponse()
 		case MSG_RESULTS:
 			// add to results list
 			jobsToWaitFor--;
+			waitingWorkers.push_back(status.MPI_SOURCE);
 			break;
 		default:
 			throw "Unrecognized message received by master";
