@@ -1,0 +1,10 @@
+﻿#define TAG_DISPATCH_JOB 1
+#define TAG_MESSAGE_FROM_WORKER 2
+#define TAG_DEFER_JOB 3
+
+#define MSG_RESULTS 0
+#define MSG_REQUEST_WORK 1
+#define MSG_GIVE_WORK 2
+
+#define MSG_STOP -1
+#define MSG_NO_WORK -2
