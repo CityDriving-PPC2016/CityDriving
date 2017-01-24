@@ -15,18 +15,18 @@ int main(int argc, char* argv[]) {
 
 	launchDebugger();
 
-	if (argc > 1) {
-		char* inputFile = argv[1];
-		ifstream input(inputFile);
-		freopen(inputFile, "r", stdin);
-	}
-
 	int rank, worldSize;
 	MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	if (rank == 0) {
 		// Master
 
+		if (argc > 1) {
+			char* inputFile = argv[1];
+			ifstream input(inputFile);
+			freopen(inputFile, "r", stdin);
+		}
+		
 		Master master;
 		master.ReadGraph();
 		master.SetSearchPoints(1, 2, 4, 1);
