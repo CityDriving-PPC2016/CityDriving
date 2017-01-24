@@ -33,7 +33,9 @@ int main(int argc, char* argv[]) {
 		master.PrepareJobs(worldSize);
 
 		master.DispatchGraph();
-		master.DispatchJobs();
+		master.DispatchJobs(worldSize);
+
+		master.WaitForResponse();
 
 		cout << endl << "Master: " << rank;
 	}
@@ -42,9 +44,11 @@ int main(int argc, char* argv[]) {
 
 		Worker worker;
 		worker.ReceiveGraph();
-		worker.ReceiveWork();
-		worker.FindRoutes();
-
+		if (!worker.ReceiveWork())
+			worker.WaitForWork();
+		do {
+			worker.FindRoutes();
+		} while (worker.WaitForWork());
 		cout << endl << "Slave: " << rank;
 	}
 	MPI_Finalize();

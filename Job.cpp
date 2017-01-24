@@ -21,9 +21,9 @@ Job::Job(char * data, int size)
 	jobData = vector<int>(end, end + (size / sizeof(int)));
 }
 
-int Job::LastNode()
+int Job::LastNode() const
 {
-	return max;
+	return find(jobData.begin(), jobData.end(), max) - jobData.begin();
 }
 
 int Job::operator[](const int index)

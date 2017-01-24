@@ -14,9 +14,13 @@ class Worker {
 private:
 	Graph* graph;
 	vector<Job*> jobs;
+
+	void SendGiveWorkNotification();
+	void GiveWorkToWorker(int workerId, Job* job);
 public:
 	void ReceiveGraph();
-	void ReceiveWork();
+	bool ReceiveWork();
+	bool WaitForWork(int source = 0);
 	void FindRoutes();
 
 };

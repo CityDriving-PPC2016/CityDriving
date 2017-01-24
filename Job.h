@@ -16,7 +16,7 @@ public:
 	Job(int nodeCount);
 	Job(char* data, int size);
 
-	int LastNode();
+	int LastNode() const;
 
 	int operator[] (const int index);
 
