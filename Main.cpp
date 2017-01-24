@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
 		master.PrepareJobs(worldSize);
 
 		master.DispatchGraph();
+		master.DispatchJobs();
 
 		cout << endl << "Master: " << rank;
 	}
@@ -41,6 +42,8 @@ int main(int argc, char* argv[]) {
 
 		Worker worker;
 		worker.ReceiveGraph();
+		worker.ReceiveWork();
+		worker.FindRoutes();
 
 		cout << endl << "Slave: " << rank;
 	}

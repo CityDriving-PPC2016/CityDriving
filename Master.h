@@ -7,7 +7,7 @@
 #include <vector>
 
 class Graph;
-class Job;
+struct Job;
 
 using namespace std;
 
@@ -24,6 +24,8 @@ public:
 	void SetSearchPoints(int x1, int x2, int y1, int y2);
 	void PrepareJobs(int worldSize);
 	void DispatchGraph();
+
+	void DispatchJobs();
 };
 
 #endif // !MASTER_H_DEF

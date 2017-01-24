@@ -54,14 +54,14 @@ void Master::PrepareJobs(int worldSize)
 		queue.pop_front();
 
 		if (visited[current] == 0) {
-			Job job = Job(graph->Size());
-			job += current;
-			jobs.push_back(&job);
+			Job* job = new Job(graph->Size());
+			*job += current;
+			jobs.push_back(job);
 		}
 		else {
-			Job job = jobs[current]->copy();
-			job += current;
-			jobs.push_back(&job);
+			Job* job = new Job(*jobs[current]);
+			*job += current;
+			jobs.push_back(job);
 		}
 
 		list<int> adj = graph->GetAdjacents(current);
@@ -81,11 +81,23 @@ void Master::DispatchGraph()
 {
 	char* data;
 	int dataSize = graph->data(data);
-	
+
 	MPI_Bcast(&dataSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Bcast(data, dataSize, MPI_CHAR, 0, MPI_COMM_WORLD);
 
 	delete[] data;
+}
+
+void Master::DispatchJobs()
+{
+	for (int i = 0; i < jobs.size(); i++)
+	{
+		char* data;
+		int size = jobs[i]->data(data);
+		MPI_Send(&size, 1, MPI_INT, i + 1, 0, MPI_COMM_WORLD);
+		MPI_Send(data, size, MPI_CHAR, i + 1, 0, MPI_COMM_WORLD);
+		delete[] data;
+	}
 }
 
 void Master::SetSearchPoints(int x1, int x2, int y1, int y2)
