@@ -13,7 +13,6 @@ int main(int argc, char* argv[]) {
 
 	MPI_Init(&argc, &argv);
 
-	launchDebugger();
 
 	int rank, worldSize;
 	MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
@@ -26,10 +25,11 @@ int main(int argc, char* argv[]) {
 			ifstream input(inputFile);
 			freopen(inputFile, "r", stdin);
 		}
-		
+
 		Master master;
+		launchDebugger();
 		master.ReadGraph();
-		master.SetSearchPoints(1, 2, 4, 1);
+		master.SetSearchPoints(1, 4, 1, 2);
 		master.PrepareJobs(worldSize);
 
 		master.DispatchGraph();
@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
 
 		master.WaitForResponse();
 
-		cout << endl << "Master: " << rank;
+		master.DisplayResults();
 	}
 	else {
 		// Slaves
@@ -51,7 +51,6 @@ int main(int argc, char* argv[]) {
 		do {
 			worker.FindRoutes();
 		} while (worker.WaitForWork());
-		cout << endl << "Slave: " << rank;
 	}
 	MPI_Finalize();
 	return 0;

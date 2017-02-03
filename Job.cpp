@@ -1,29 +1,40 @@
 #include "Job.h"
 
+#include <iostream>
+
 Job::Job(const Job & _job)
 {
 	max = _job.max;
+	lastNode = _job.lastNode;
 	jobData = vector<int>(_job.jobData);
 }
 
 Job::Job(int nodeCount)
 {
 	max = 0;
+	lastNode = -1;
 	jobData = vector<int>(nodeCount, 0);
 }
 
-Job::Job(char * data, int size)
+Job::Job(char* data, int size)
 {
 	char* end = data;
 	memcpy(&max, end, sizeof(int));
 	end += sizeof(int);
-	size -= sizeof(int);
-	jobData = vector<int>(end, end + (size / sizeof(int)));
+	memcpy(&lastNode, end, sizeof(int));
+	end += sizeof(int);
+	size -= 2 * sizeof(int);
+	jobData = vector<int>((int*)end, (int*)end + size / sizeof(int));
+}
+
+int Job::NodeCount()
+{
+	return max;
 }
 
 int Job::LastNode() const
 {
-	return find(jobData.begin(), jobData.end(), max) - jobData.begin();
+	return lastNode;
 }
 
 int Job::operator[](const int index)
@@ -34,6 +45,7 @@ int Job::operator[](const int index)
 Job Job::operator+(const int node)
 {
 	jobData[node] = ++max;
+	lastNode = node;
 	return *this;
 }
 
@@ -42,13 +54,53 @@ Job Job::operator+=(const int node)
 	return this->operator+(node);
 }
 
-int Job::data(char *& buffer)
+int Job::data(shared_ptr<char>& buffer, bool initialize)
 {
-	int size = sizeof(int) + jobData.size() * sizeof(int);
-	buffer = new char[size];
+	if (initialize)
+		buffer = shared_ptr<char>(new char[Size()]);
+	auto d = buffer.get();
+	return data(d, false);
+}
+
+int Job::data(char*& buffer, bool initialize)
+{
+	int size = Size();
+	if (initialize)
+		buffer = new char[size];
 	char* end = buffer;
 	memcpy(end, &max, sizeof(int));
 	end += sizeof(int);
+	memcpy(end, &lastNode, sizeof(int));
+	end += sizeof(int);
 	memcpy(end, jobData.data(), jobData.size() * sizeof(int));
 	return size;
+}
+
+int Job::Size()
+{
+	return 2 * sizeof(int) + jobData.size() * sizeof(int);
+}
+
+void Job::Display(int index, vector<string> labels)
+{
+	cout << index << ". ";
+
+	vector<int> ordered(jobData.size(), -1);
+	for (int i = 0; i < jobData.size(); i++)
+	{
+		if (jobData[i] > 0)
+			ordered[jobData[i] - 1] = i;
+	}
+
+	bool written = false;
+	for (int i = 0; i < ordered.size(); i++)
+	{
+		if (ordered[i] > -1) {
+			if (written)
+				cout << " > ";
+			cout << labels[ordered[i]].c_str();
+			written = true;
+		}
+	}
+	cout << endl;
 }

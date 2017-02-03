@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <memory>
 
 class Graph;
 struct Job;
@@ -14,17 +15,18 @@ using namespace std;
 
 class Master {
 private:
-	Graph* graph;
+	unique_ptr<Graph> graph;
 
 	void WriteOutput(char* msg, bool withOutput);
 
 	string startPoint, endPoint;
-	vector<Job*> jobs;
+	vector<shared_ptr<Job>> jobs;
+	vector<shared_ptr<Job>> results;
 	list<int> waitingWorkers;
 	list<int> workersWithJobsToGive;
 	int jobsToWaitFor;
 
-	void SendJob(int workerId, Job* job);
+	void SendJob(int workerId, Job job);
 
 	void SendWork(int workerId);
 	void RerouteToWorker(int to, int who);
@@ -37,6 +39,8 @@ public:
 	void DispatchJobs(int worldSize);
 
 	void WaitForResponse();
+
+	void DisplayResults();
 };
 
 #endif // !MASTER_H_DEF
