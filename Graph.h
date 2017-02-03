@@ -7,11 +7,12 @@
 #include <map>
 #include <list>
 #include <vector>
+#include <memory>
 using namespace std;
 
 class Graph {
 protected:
-	bool** adjacencyMatrix;
+	unique_ptr<unique_ptr<bool[]>[]> adjacencyMatrix;
 	int size;
 	int pmHead;
 	map<string, int> pointMap;
@@ -27,17 +28,17 @@ protected:
 public:
 	Graph(int vertexCount);
 
-	Graph(char* data);
+	Graph(shared_ptr<char> data);
 
-	~Graph();
 	bool IsAdjacent(string label1, string label2);
 	void AddEdge(int road, int cross1, int cross2);
 	string GetLabel(int road1, int road2);
+	vector<string> GetLabels();
 	int GetIndex(string label);
 	list<int> GetAdjacents(int node);
 	int Size();
 
-	int data(char*& buffer);
+	int data(shared_ptr<char>& buffer);
 
 	void Print();
 };

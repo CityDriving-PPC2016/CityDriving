@@ -7,16 +7,17 @@ Graph::Graph(int vertexCount)
 {
 	size = vertexCount;
 	pmHead = 0;
-	adjacencyMatrix = new bool*[size];
+	adjacencyMatrix = unique_ptr<unique_ptr<bool[]>[]>(new unique_ptr<bool[]>[size]);
 	for (int i = 0; i < size; i++)
 	{
-		adjacencyMatrix[i] = (bool*)calloc(size, sizeof(bool));
+		adjacencyMatrix[i] = unique_ptr<bool[]>(new bool[size]);
+		std::fill(&adjacencyMatrix[i][0], &adjacencyMatrix[i][size], false);
 	}
 }
 
-Graph::Graph(char * data)
+Graph::Graph(shared_ptr<char> data)
 {
-	char* end = data;
+	char* end = data.get();
 	memcpy(&size, end, sizeof(int));
 	end += sizeof(int);
 
@@ -29,20 +30,12 @@ Graph::Graph(char * data)
 		end += l.length() + 1;
 	}
 
-	adjacencyMatrix = new bool*[size];
+	adjacencyMatrix = unique_ptr<unique_ptr<bool[]>[]>(new unique_ptr<bool[]>[size]);
 	for (int i = 0; i < size; i++) {
-		adjacencyMatrix[i] = new bool[size];
-		memcpy(adjacencyMatrix[i], end, size);
+		adjacencyMatrix[i] = unique_ptr<bool[]>(new bool[size]);
+		memcpy(adjacencyMatrix[i].get(), end, size);
 		end += size;
 	}
-}
-
-Graph::~Graph() {
-	for (int i = 0; i < size; i++)
-	{
-		free(adjacencyMatrix[i]);
-	}
-	delete[] adjacencyMatrix;
 }
 
 bool Graph::IsAdjacent(string label1, string label2)
@@ -82,6 +75,11 @@ string Graph::GetLabel(int road1, int road2)
 	return GetVertexLabel(road1, road2);
 }
 
+vector<string> Graph::GetLabels()
+{
+	return orderedLabels();
+}
+
 int Graph::GetIndex(string label)
 {
 	return GetVertexIndex(label, true);
@@ -102,7 +100,7 @@ int Graph::Size()
 	return size;
 }
 
-int Graph::data(char*& buffer)
+int Graph::data(shared_ptr<char>& buffer)
 {
 	vector<string> labels = orderedLabels();
 	int lSize = 0;
@@ -112,8 +110,8 @@ int Graph::data(char*& buffer)
 
 	int dataSize = size*size + 8 + lSize + size;
 
-	char* data = new char[dataSize];
-	char* end = data;
+	buffer = shared_ptr<char>(new char[dataSize]);
+	char* end = buffer.get();
 	memcpy(end, &size, sizeof(int));
 	end += sizeof(int);
 	memcpy(end, &pmHead, sizeof(int));
@@ -126,11 +124,10 @@ int Graph::data(char*& buffer)
 	}
 
 	for (int i = 0; i < size; i++) {
-		memcpy(end, adjacencyMatrix[i], size);
+		memcpy(end, adjacencyMatrix[i].get(), size);
 		end += size;
 	}
 
-	buffer = data;
 	return dataSize;
 }
 

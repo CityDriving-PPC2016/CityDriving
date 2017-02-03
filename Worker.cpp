@@ -11,25 +11,22 @@ void Worker::SendGiveWorkNotification()
 	MPI_Send(&msg, 1, MPI_CHAR, 0, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD);
 }
 
-void Worker::GiveWorkToWorker(int workerId, Job * job)
+void Worker::GiveWorkToWorker(int workerId, Job job)
 {
-	char* data;
-	int size = job->data(data);
-	MPI_Send(data, size, MPI_CHAR, workerId, TAG_DISPATCH_JOB, MPI_COMM_WORLD);
-	delete[] data;
+	shared_ptr<char> data;
+	int size = job.data(data);
+	MPI_Send(data.get(), size, MPI_CHAR, workerId, TAG_DISPATCH_JOB, MPI_COMM_WORLD);
 }
+
 
 void Worker::ReceiveGraph()
 {
-	char* data;
 	int dataSize;
-
 	MPI_Bcast(&dataSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
-	data = new char[dataSize];
+	shared_ptr<char> data(new char[dataSize]);
 
-	MPI_Bcast(data, dataSize, MPI_CHAR, 0, MPI_COMM_WORLD);
-	graph = new Graph(data);
-	delete[] data;
+	MPI_Bcast(data.get(), dataSize, MPI_CHAR, 0, MPI_COMM_WORLD);
+	graph = unique_ptr<Graph>(new Graph(data));
 }
 
 void Worker::ReceiveEndPoint()
@@ -46,11 +43,10 @@ bool Worker::ReceiveWork()
 	if (size == 0)
 		return false; // we need to wait
 
-	char* data = new char[size];
-	MPI_Recv(data, size, MPI_CHAR, 0, TAG_DISPATCH_JOB, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	Job* job = new Job(data, size);
+	shared_ptr<char> data(new char[size]);
+	MPI_Recv(data.get(), size, MPI_CHAR, 0, TAG_DISPATCH_JOB, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	shared_ptr<Job> job(new Job(data.get(), size));
 	jobs.push_back(job);
-	delete[] data;
 	return true;
 }
 
@@ -61,7 +57,8 @@ bool Worker::WaitForWork(int source)
 	MPI_Probe(source, TAG_DISPATCH_JOB, MPI_COMM_WORLD, &status);
 	MPI_Get_count(&status, MPI_CHAR, &size);
 
-	char* data = new char[size];
+	shared_ptr<char> dataPtr(new char[size]);
+	auto data = dataPtr.get();
 	MPI_Recv(data, size, MPI_CHAR, source, TAG_DISPATCH_JOB, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 	if (size == 1) {
@@ -70,7 +67,6 @@ bool Worker::WaitForWork(int source)
 			// no work received from another worker, register for waiting to the master
 			char msg = MSG_REQUEST_WORK;
 			MPI_Send(&msg, 1, MPI_CHAR, 0, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD);
-			delete[] data;
 			return WaitForWork();
 		}
 		else if (data[0] == MSG_STOP) {
@@ -81,22 +77,71 @@ bool Worker::WaitForWork(int source)
 			char msg = MSG_REQUEST_WORK;
 			MPI_Send(&msg, 1, MPI_CHAR, data[0], TAG_DEFER_JOB, MPI_COMM_WORLD);
 			bool result = WaitForWork(data[0]);
-			delete[] data;
 			return result;
 		}
 		else
 			throw "unrecognized message received in worker";
 	}
 	else {
-		Job* job = new Job(data, size);
+		shared_ptr<Job> job(new Job(data, size));
 		jobs.push_back(job);
 	}
-	delete[] data;
 	return true;
 }
 
 void Worker::FindRoutes()
 {
-	char msg = MSG_RESULTS;
+	for (auto it = jobs.begin(); it != jobs.end();) {
+		if (!ProcessJob(**it))
+			it = jobs.erase(it);
+		else
+			++it;
+	}
+
+	auto size = jobs.size();
+
+	char msg = size == 0 ? MSG_NO_RESULTS : MSG_RESULTS;
 	MPI_Send(&msg, 1, MPI_CHAR, 0, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD);
+
+	if (size == 0)
+		return;
+
+	auto jobSize = (*jobs.begin())->Size();
+	size *= jobSize;
+	size += sizeof(int);
+	shared_ptr<char> data(new char[size]);
+
+	auto end = data.get();
+
+	memcpy(end, &jobSize, sizeof(int));
+	end += sizeof(int);
+
+	for each (auto job in jobs)
+	{
+		job->data(end, false);
+		end += jobSize;
+	}
+	MPI_Send(data.get(), size, MPI_CHAR, 0, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD);
+}
+
+
+bool Worker::ProcessJob(Job job)
+{
+	int currentNode = job.LastNode();
+	if (currentNode == endPoint)
+		return true;
+
+	list<int> adj = graph->GetAdjacents(currentNode);
+
+	for each (int node in adj)
+	{
+		if (job[node] > 0)
+			continue;
+
+		shared_ptr<Job> newJob(new Job(job));
+		*newJob += node;
+		jobs.push_back(newJob);
+	}
+
+	return false;
 }
