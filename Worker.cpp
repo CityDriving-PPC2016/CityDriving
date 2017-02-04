@@ -135,11 +135,14 @@ bool Worker::ProcessJob(Job job)
 
 	for each (int node in adj)
 	{
-		if (job[node] > 0)
+		if (job[node] > 0 || !job.CanAccess(currentNode, node))
 			continue;
 
 		shared_ptr<Job> newJob(new Job(job));
 		*newJob += node;
+		for each (int adjadj in adj) {
+			newJob->BlockPath(node, adjadj);
+		}
 		jobs.push_back(newJob);
 	}
 

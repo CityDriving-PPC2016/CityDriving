@@ -15,11 +15,23 @@ using namespace std;
 
 class Master {
 private:
+	struct InputModel {
+	private:
+		int road;
+		int cross;
+		bool twoWay;
+	public:
+		InputModel(int road, int cross, bool twoWay);
+		int Road() const;
+		int Cross() const;
+		bool TwoWay() const;
+	};
+
 	unique_ptr<Graph> graph;
 
 	void WriteOutput(char* msg, bool withOutput);
 
-	string startPoint, endPoint;
+	int startPoint, endPoint;
 	vector<shared_ptr<Job>> jobs;
 	vector<shared_ptr<Job>> results;
 	list<int> waitingWorkers;
@@ -32,7 +44,7 @@ private:
 	void RerouteToWorker(int to, int who);
 public:
 	void ReadGraph(bool withOutput = false);
-	void SetSearchPoints(int x1, int x2, int y1, int y2);
+	void SetSearchPoints(int start, int end);
 	void PrepareJobs(int worldSize);
 	void DispatchGraph();
 	void DispatchEndPoint();
@@ -42,5 +54,6 @@ public:
 
 	void DisplayResults();
 };
+
 
 #endif // !MASTER_H_DEF

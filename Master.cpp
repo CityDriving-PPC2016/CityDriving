@@ -8,6 +8,7 @@
 #include <iostream>
 #include <list>
 #include <algorithm>
+#include <unordered_set>
 
 void Master::WriteOutput(char* msg, bool withOutput)
 {
@@ -34,32 +35,35 @@ void Master::RerouteToWorker(int to, int who)
 	MPI_Send(&data, 1, MPI_CHAR, to, TAG_DISPATCH_JOB, MPI_COMM_WORLD);
 }
 
-void Master::ReadGraph(bool wOut)
-{
-
-	int vNum;
-	WriteOutput("Number of intersections: ", wOut);
-	cin >> vNum;
-
-	graph = unique_ptr<Graph>(new Graph(vNum + 1));
-
-	int road, cross1, cross2, twoWay;
-	for (int i = 0; i < vNum; i++) {
-		WriteOutput("Input the street number: ", wOut);
+void Master::ReadGraph(bool wOut) {
+	list<InputModel> input;
+	unordered_set<int> roads;
+	int road, cross, twoWay;
+	do {
+		WriteOutput("Input the start street number: ", wOut);
 		cin >> road;
-		WriteOutput("Input the first cross street: ", wOut);
-		cin >> cross1;
-		WriteOutput("Input the second cross street: ", wOut);
-		cin >> cross2;
+		if (road == 0)
+			break;
+
+		WriteOutput("Input the end street number: ", wOut);
+		cin >> cross;
+
 		WriteOutput("mode (1 for oneway, 2 for bidirectional): ", wOut);
 		cin >> twoWay;
 
-		graph->AddEdge(road, cross1, cross2);
-		if (twoWay == 2)
-			graph->AddEdge(road, cross2, cross1);
-	}
+		input.push_back(InputModel(road, cross, twoWay == 2));
+		roads.insert(road);
+		roads.insert(cross);
+	} while (road);
+	//set<int> s(roads.begin(), roads.end());
+	graph = unique_ptr<Graph>(new Graph(roads.size()));
 
-	//graph->Print();
+	for each (auto item in input)
+	{
+		graph->AddEdge(item.Road(), item.Cross());
+		if (item.TwoWay())
+			graph->AddEdge(item.Cross(), item.Road());
+	}
 }
 
 void Master::PrepareJobs(int worldSize)
@@ -68,8 +72,8 @@ void Master::PrepareJobs(int worldSize)
 	vector<int> visited = vector<int>(graph->Size(), -2);
 
 	list<int> queue;
-	queue.push_back(graph->GetIndex(startPoint));
-	visited[graph->GetIndex(startPoint)] = -1;
+	queue.push_back(startPoint);
+	visited[startPoint] = -1;
 
 	while (!queue.empty()) {
 		int current = queue.front();
@@ -120,8 +124,7 @@ void Master::DispatchGraph()
 
 void Master::DispatchEndPoint()
 {
-	int endIndex = graph->GetIndex(endPoint);
-	MPI_Bcast(&endIndex, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&endPoint, 1, MPI_INT, 0, MPI_COMM_WORLD);
 }
 
 void Master::DispatchJobs(int worldSize)
@@ -245,10 +248,11 @@ void Master::DisplayResults()
 
 	int minI = 0, maxI = 0, minCount = INT_MAX, maxCount = 0;
 	int i = 1;
-	auto labels = graph->GetLabels();
+	//auto labels = graph->GetLabels();
 	for each (auto job in results)
 	{
-		job->Display(i++, labels);
+		cout << i++ << ". ";
+		job->Display();
 		if (job->NodeCount() < minCount) {
 			minI = i - 1;
 			minCount = job->NodeCount();
@@ -263,8 +267,30 @@ void Master::DisplayResults()
 	cout << endl << "The longhest path is: " << maxI << ". It has " << maxCount << " units";
 }
 
-void Master::SetSearchPoints(int x1, int x2, int y1, int y2)
+void Master::SetSearchPoints(int start, int end)
 {
-	startPoint = graph->GetLabel(x1, x2);
-	endPoint = graph->GetLabel(y1, y2);
+	startPoint = start - 1;
+	endPoint = end - 1;
+}
+
+Master::InputModel::InputModel(int road, int cross, bool twoWay)
+{
+	this->road = road;
+	this->cross = cross;
+	this->twoWay = twoWay;
+}
+
+int Master::InputModel::Road() const
+{
+	return road;
+}
+
+int Master::InputModel::Cross() const
+{
+	return cross;
+}
+
+bool Master::InputModel::TwoWay() const
+{
+	return twoWay;
 }

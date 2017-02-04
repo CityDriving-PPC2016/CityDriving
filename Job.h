@@ -5,7 +5,6 @@
 
 #include <vector>
 #include <memory>
-#include <functional>
 using namespace std;
 
 struct Job
@@ -27,12 +26,15 @@ public:
 	Job operator+(const int node);
 	Job operator+=(const int node);
 
+	void BlockPath(int from, int to);
+	bool CanAccess(int from, int to);
+
 	int data(shared_ptr<char>& buffer, bool initialize = true);
 	int data(char*& buffer, bool initialize = true);
 
 	int Size();
 
-	void Display(int index, vector<string> labels);
+	void Display();
 };
 
 #endif // !JOB_H_DEF

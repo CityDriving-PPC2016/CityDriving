@@ -27,9 +27,9 @@ int main(int argc, char* argv[]) {
 		}
 
 		Master master;
-		launchDebugger();
+		//launchDebugger();
 		master.ReadGraph();
-		master.SetSearchPoints(1, 4, 1, 2);
+		master.SetSearchPoints(5, 22);
 		master.PrepareJobs(worldSize);
 
 		master.DispatchGraph();
@@ -49,6 +49,7 @@ int main(int argc, char* argv[]) {
 		if (!worker.ReceiveWork())
 			worker.WaitForWork();
 		do {
+			//launchDebugger();
 			worker.FindRoutes();
 		} while (worker.WaitForWork());
 	}
