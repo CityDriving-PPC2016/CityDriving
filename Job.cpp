@@ -54,6 +54,19 @@ Job Job::operator+=(const int node)
 	return this->operator+(node);
 }
 
+void Job::BlockPath(int from, int to)
+{
+	if (jobData[to] > 0) return;
+	jobData[to] = -from - 1;
+}
+
+bool Job::CanAccess(int from, int to)
+{
+	if (jobData[to] + 1 + from == 0)
+		return false;
+	return true;
+}
+
 int Job::data(shared_ptr<char>& buffer, bool initialize)
 {
 	if (initialize)
@@ -81,10 +94,8 @@ int Job::Size()
 	return 2 * sizeof(int) + jobData.size() * sizeof(int);
 }
 
-void Job::Display(int index, vector<string> labels)
+void Job::Display()
 {
-	cout << index << ". ";
-
 	vector<int> ordered(jobData.size(), -1);
 	for (int i = 0; i < jobData.size(); i++)
 	{
@@ -95,12 +106,13 @@ void Job::Display(int index, vector<string> labels)
 	bool written = false;
 	for (int i = 0; i < ordered.size(); i++)
 	{
-		if (ordered[i] > -1) {
-			if (written)
-				cout << " > ";
-			cout << labels[ordered[i]].c_str();
-			written = true;
-		}
+		if (ordered[i] == -1)
+			break;
+
+		if (written)
+			cout << " > ";
+		cout << ordered[i] + 1;
+		written = true;
 	}
 	cout << endl;
 }
