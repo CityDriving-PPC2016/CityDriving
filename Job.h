@@ -13,7 +13,14 @@ private:
 	int max;
 	int lastNode;
 	vector<int> jobData;
+	Job(char staticMode);
 public:
+
+	static Job MinJob;
+	static shared_ptr<Job> MinJobPtr;
+	static Job MaxJob;
+	static shared_ptr<Job> MaxJobPtr;
+
 	Job(const Job& job);
 	Job(int nodeCount);
 	Job(char* data, int size);

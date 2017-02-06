@@ -1,3 +1,4 @@
+#include "Debugger.h"
 #include "Constants.h"
 #include "Worker.h"
 #include "Graph.h"
@@ -40,8 +41,14 @@ bool Worker::ReceiveWork()
 	auto status = MPI_Status();
 	MPI_Probe(0, TAG_DISPATCH_JOB, MPI_COMM_WORLD, &status);
 	MPI_Get_count(&status, MPI_CHAR, &size);
-	if (size == 0)
-		return false; // we need to wait
+	if (size == 1) {
+		char msg;
+		MPI_Recv(&msg, 1, MPI_CHAR, 0, TAG_DISPATCH_JOB, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		if (msg == MSG_NO_WORK)
+			return false; // we need to wait
+		else
+			throw "Unknown message in Worker::ReceiveWork";
+	}
 
 	shared_ptr<char> data(new char[size]);
 	MPI_Recv(data.get(), size, MPI_CHAR, 0, TAG_DISPATCH_JOB, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -96,6 +103,19 @@ void Worker::FindRoutes()
 			it = jobs.erase(it);
 		else
 			++it;
+
+		MPI_Status status;
+		int flag;
+		MPI_Iprobe(MPI_ANY_SOURCE, TAG_DEFER_JOB, MPI_COMM_WORLD, &flag, &status);
+		if (flag) {
+			char msg;
+			MPI_Recv(&msg, 1, MPI_CHAR, status.MPI_SOURCE, TAG_DEFER_JOB, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			if (msg == MSG_REQUEST_WORK) {
+				msg = MSG_NO_WORK;
+				MPI_Send(&msg, 1, MPI_CHAR, status.MPI_SOURCE, TAG_DISPATCH_JOB, MPI_COMM_WORLD);
+			}
+		}
+		// send message to master if there are to much jobs in queue to defer to other workers.
 	}
 
 	auto size = jobs.size();
@@ -122,6 +142,7 @@ void Worker::FindRoutes()
 		end += jobSize;
 	}
 	MPI_Send(data.get(), size, MPI_CHAR, 0, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD);
+	jobs.clear();
 }
 
 

@@ -2,11 +2,28 @@
 
 #include <iostream>
 
+shared_ptr<Job> Job::MinJobPtr = shared_ptr<Job>(new Job('m'));
+shared_ptr<Job> Job::MaxJobPtr = shared_ptr<Job>(new Job('M'));
+Job Job::MinJob = *Job::MinJobPtr;
+Job Job::MaxJob = *Job::MaxJobPtr;
+
 Job::Job(const Job & _job)
 {
 	max = _job.max;
 	lastNode = _job.lastNode;
 	jobData = vector<int>(_job.jobData);
+}
+
+Job::Job(char staticMode)
+{
+	if (staticMode == 'm') {
+		max = INT_MAX;
+	}
+	else if (staticMode == 'M') {
+		max = 0;
+	}
+	lastNode = -1;
+	jobData = vector<int>(1, 0);
 }
 
 Job::Job(int nodeCount)

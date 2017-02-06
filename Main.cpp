@@ -27,9 +27,9 @@ int main(int argc, char* argv[]) {
 		}
 
 		Master master;
-		//launchDebugger();
 		master.ReadGraph();
-		master.SetSearchPoints(5, 22);
+		master.SetSearchPoints(22, 29);
+		//launchDebugger();
 		master.PrepareJobs(worldSize);
 
 		master.DispatchGraph();
@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
 
 		master.WaitForResponse();
 
-		master.DisplayResults();
+		master.DisplayMinMax();
 	}
 	else {
 		// Slaves
@@ -47,9 +47,12 @@ int main(int argc, char* argv[]) {
 		worker.ReceiveGraph();
 		worker.ReceiveEndPoint();
 		if (!worker.ReceiveWork())
-			worker.WaitForWork();
+			if (!worker.WaitForWork()) {
+				MPI_Finalize();
+				return 0;
+			}
+		//launchDebugger();
 		do {
-			//launchDebugger();
 			worker.FindRoutes();
 		} while (worker.WaitForWork());
 	}
