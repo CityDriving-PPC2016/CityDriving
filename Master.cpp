@@ -26,7 +26,7 @@ void Master::SendJob(int workerId, Job job)
 void Master::SendWork(int workerId)
 {
 	SendJob(workerId, **jobs.begin());
-	jobs.erase(jobs.begin());
+	jobs.pop_front();
 }
 
 void Master::RerouteToWorker(int to, int who)
@@ -48,6 +48,13 @@ void Master::HandleWorker(int workerId)
 	}
 	else
 		waitingWorkers.push_back(workerId);
+}
+
+Master::Master()
+{
+	minJob = Job::MinJobPtr;
+	maxJob = Job::MaxJobPtr;
+	minIdx = maxIdx = -1;
 }
 
 void Master::ReadGraph(bool wOut) {
@@ -96,8 +103,9 @@ void Master::PrepareJobs(int worldSize)
 		queue.pop_front();
 
 		int parentId = visited[current];
+		shared_ptr<Job> job;
 		if (parentId == -1) {
-			shared_ptr<Job> job(new Job(graph->Size()));
+			job = shared_ptr<Job>(new Job(graph->Size()));
 			*job += current;
 			jobs.push_back(job);
 		}
@@ -105,8 +113,14 @@ void Master::PrepareJobs(int worldSize)
 			auto parent = find_if(jobs.begin(), jobs.end(), [&parentId](shared_ptr<Job> job) {
 				return job->LastNode() == parentId;
 			});
-			shared_ptr<Job> job(new Job(**parent));
+			job = shared_ptr<Job>(new Job(**parent));
 			*job += current;
+
+			auto adj = graph->GetAdjacents((**parent).LastNode());
+			for each (auto parentAdj in adj) {
+				if (parentAdj == current) continue;
+				job->BlockPath(current, parentAdj);
+			}
 
 			if (childCount[parentId] > 0)
 				childCount[parentId]--;
@@ -123,13 +137,14 @@ void Master::PrepareJobs(int worldSize)
 		if (parentId != -1 && childCount[parentId] > 0) expectedSize--;
 
 		if (workerCount > expectedSize) {
-			list<int> adj = graph->GetAdjacents(current);
+			auto adj = graph->GetAdjacents(current);
 			for each (int node in adj) {
-				if (visited[node] == -2) {
-					childCount[current]++;
-					visited[node] = current;
-					queue.push_back(node);
-				}
+				if (visited[node] != -2 || !job->CanAccess(current, node))
+					continue;
+
+				childCount[current]++;
+				visited[node] = current;
+				queue.push_back(node);
 			}
 		}
 	}
@@ -165,24 +180,24 @@ void Master::DispatchJobs(int worldSize)
 
 	for (int i = 0; i < jobsToDispatch; i++)
 	{
-		SendJob(i + 1, *jobs[i]);
+		SendJob(i + 1, **jobs.begin());
+		jobs.pop_front();
 		jobsToWaitFor++;
 	}
 
 	if (worldBigger) {
-		for (int i = jobsToDispatch; i < workerCount + 1; i++) {
+		for (int i = jobsToDispatch; i < workerCount; i++) {
 			// send wait for jobs
-			MPI_Send(NULL, 0, MPI_CHAR, i, TAG_DISPATCH_JOB, MPI_COMM_WORLD);
-			waitingWorkers.push_back(i);
+			char msg = MSG_NO_WORK;
+			MPI_Send(&msg, 1, MPI_CHAR, i + 1, TAG_DISPATCH_JOB, MPI_COMM_WORLD);
+			waitingWorkers.push_back(i + 1);
 		}
-	}
-	else {
-		jobs = vector<shared_ptr<Job>>(jobs.begin() + jobsToDispatch, jobs.end());
 	}
 }
 
 void Master::WaitForResponse()
 {
+	int _i = 1;
 	while (workersWithJobsToGive.size() || jobsToWaitFor > 0) {
 		char msg;
 		MPI_Status status;
@@ -220,7 +235,7 @@ void Master::WaitForResponse()
 			MPI_Probe(status.MPI_SOURCE, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD, &statusResults);
 			MPI_Get_count(&statusResults, MPI_CHAR, &resultsSize);
 
-			shared_ptr<char> data(new char[resultsSize]);
+			unique_ptr<char> data(new char[resultsSize]);
 			MPI_Recv(data.get(), resultsSize, MPI_CHAR, status.MPI_SOURCE, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			int jobSize;
 			auto end = data.get();
@@ -231,7 +246,8 @@ void Master::WaitForResponse()
 			for (int i = 0; i < resultsSize / jobSize; i++) {
 				shared_ptr<Job> job(new Job(end, jobSize));
 				end += jobSize;
-				results.push_back(job);
+
+				_i = DisplayResults(job, _i);
 			}
 
 			HandleWorker(status.MPI_SOURCE);
@@ -251,32 +267,38 @@ void Master::WaitForResponse()
 	}
 }
 
-void Master::DisplayResults()
+int Master::DisplayResults(shared_ptr<Job> job, int i)
 {
-	if (results.size() == 0) {
+	if (i < 1) i = 1;
+	if (job == nullptr)
+		return i;
+
+	cout << i << ". ";
+	job->Display();
+	if (job->NodeCount() < minJob->NodeCount()) {
+		minIdx = i;
+		minJob = job;
+	}
+	if (job->NodeCount() > maxJob->NodeCount()) {
+		maxIdx = i;
+		maxJob = job;
+	}
+	return ++i;
+}
+
+void Master::DisplayMinMax()
+{
+	if (minIdx == -1 || maxIdx == -1) {
 		cout << "We did not find any route from the start point to the end point.";
 		return;
 	}
 
-	int minI = 0, maxI = 0, minCount = INT_MAX, maxCount = 0;
-	int i = 1;
-	//auto labels = graph->GetLabels();
-	for each (auto job in results)
-	{
-		cout << i++ << ". ";
-		job->Display();
-		if (job->NodeCount() < minCount) {
-			minI = i - 1;
-			minCount = job->NodeCount();
-		}
-		if (job->NodeCount() > maxCount) {
-			maxI = i - 1;
-			maxCount = job->NodeCount();
-		}
-	}
-
-	cout << endl << "The shortest path is: " << minI << ". It has " << minCount << " units";
-	cout << endl << "The longhest path is: " << maxI << ". It has " << maxCount << " units";
+	cout << endl << "The shortest path is: " << minIdx << ". It has " << minJob->NodeCount() << " units";
+	cout << endl << minIdx << ". ";
+	minJob->Display();
+	cout << endl << "The longhest path is: " << maxIdx << ". It has " << maxJob->NodeCount() << " units";
+	cout << endl << maxIdx << ". ";
+	maxJob->Display();
 }
 
 void Master::SetSearchPoints(int start, int end)
