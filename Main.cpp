@@ -48,8 +48,8 @@ int main(int argc, char* argv[]) {
 		worker.ReceiveEndPoint();
 		if (!worker.ReceiveWork())
 			worker.WaitForWork();
+		//launchDebugger();
 		do {
-			//launchDebugger();
 			worker.FindRoutes();
 		} while (worker.WaitForWork());
 	}

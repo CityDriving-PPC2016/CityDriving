@@ -42,6 +42,7 @@ private:
 
 	void SendWork(int workerId);
 	void RerouteToWorker(int to, int who);
+	void HandleWorker(int workerId);
 public:
 	void ReadGraph(bool withOutput = false);
 	void SetSearchPoints(int start, int end);

@@ -26,13 +26,28 @@ void Master::SendJob(int workerId, Job job)
 void Master::SendWork(int workerId)
 {
 	SendJob(workerId, **jobs.begin());
-	jobs.erase(jobs.begin() + 1, jobs.end());
+	jobs.erase(jobs.begin());
 }
 
 void Master::RerouteToWorker(int to, int who)
 {
-	char data = who;
-	MPI_Send(&data, 1, MPI_CHAR, to, TAG_DISPATCH_JOB, MPI_COMM_WORLD);
+	char data = to;
+	MPI_Send(&data, 1, MPI_CHAR, who, TAG_DISPATCH_JOB, MPI_COMM_WORLD);
+}
+
+void Master::HandleWorker(int workerId)
+{
+	if (jobs.size()) {
+		SendWork(workerId);
+		jobsToWaitFor++;
+	}
+	else if (workersWithJobsToGive.size()) {
+		RerouteToWorker(*workersWithJobsToGive.begin(), workerId);
+		workersWithJobsToGive.pop_front();
+		jobsToWaitFor++;
+	}
+	else
+		waitingWorkers.push_back(workerId);
 }
 
 void Master::ReadGraph(bool wOut) {
@@ -70,6 +85,7 @@ void Master::PrepareJobs(int worldSize)
 {
 	int workerCount = worldSize - 1;
 	vector<int> visited = vector<int>(graph->Size(), -2);
+	vector<int> childCount = vector<int>(graph->Size(), 0);
 
 	list<int> queue;
 	queue.push_back(startPoint);
@@ -79,31 +95,38 @@ void Master::PrepareJobs(int worldSize)
 		int current = queue.front();
 		queue.pop_front();
 
-		if (visited[current] == -1) {
+		int parentId = visited[current];
+		if (parentId == -1) {
 			shared_ptr<Job> job(new Job(graph->Size()));
 			*job += current;
 			jobs.push_back(job);
 		}
 		else {
-			int parentId = visited[current];
 			auto parent = find_if(jobs.begin(), jobs.end(), [&parentId](shared_ptr<Job> job) {
 				return job->LastNode() == parentId;
 			});
 			shared_ptr<Job> job(new Job(**parent));
 			*job += current;
-			jobs.push_back(job);
+
+			if (childCount[parentId] > 0)
+				childCount[parentId]--;
 
 			// Removes the parent if we find one
-			jobs.erase(remove_if(jobs.begin(), jobs.end(), [&parentId](shared_ptr<Job> arg) {
-				return arg->LastNode() == parentId;
-			}));
+			if (childCount[parentId] == 0)
+				jobs.erase(parent);
+
+			jobs.push_back(job);
 		}
 
-		list<int> adj = graph->GetAdjacents(current);
 
-		if (workerCount > jobs.size() + queue.size()) {
+		int expectedSize = jobs.size() + queue.size();
+		if (parentId != -1 && childCount[parentId] > 0) expectedSize--;
+
+		if (workerCount > expectedSize) {
+			list<int> adj = graph->GetAdjacents(current);
 			for each (int node in adj) {
 				if (visited[node] == -2) {
+					childCount[current]++;
 					visited[node] = current;
 					queue.push_back(node);
 				}
@@ -168,18 +191,7 @@ void Master::WaitForResponse()
 		switch (msg)
 		{
 		case MSG_REQUEST_WORK:
-			if (jobs.size()) {
-				SendWork(status.MPI_SOURCE);
-				jobsToWaitFor++;
-			}
-			else if (workersWithJobsToGive.size()) {
-				RerouteToWorker(*workersWithJobsToGive.begin(), status.MPI_SOURCE);
-				workersWithJobsToGive.pop_front();
-				jobsToWaitFor++;
-			}
-			else {
-				waitingWorkers.push_back(status.MPI_SOURCE);
-			}
+			HandleWorker(status.MPI_SOURCE);
 			break;
 
 		case MSG_GIVE_WORK:
@@ -196,7 +208,7 @@ void Master::WaitForResponse()
 		case MSG_NO_RESULTS:
 			// add to results list
 			jobsToWaitFor--;
-			waitingWorkers.push_back(status.MPI_SOURCE);
+			HandleWorker(status.MPI_SOURCE);
 			break;
 
 		case MSG_RESULTS: {
@@ -222,7 +234,7 @@ void Master::WaitForResponse()
 				results.push_back(job);
 			}
 
-			waitingWorkers.push_back(status.MPI_SOURCE);
+			HandleWorker(status.MPI_SOURCE);
 			break;
 		}
 		default:
