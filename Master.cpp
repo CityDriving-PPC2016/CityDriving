@@ -1,3 +1,4 @@
+#include "Debugger.h"
 #include "Constants.h"
 #include "Master.h"
 #include "Graph.h"
@@ -37,6 +38,9 @@ void Master::RerouteToWorker(int to, int who)
 
 void Master::HandleWorker(int workerId)
 {
+	while (workersWithJobsToGive.size() && workerId == *workersWithJobsToGive.begin())
+		workersWithJobsToGive.pop_front();
+
 	if (jobs.size()) {
 		SendWork(workerId);
 		jobsToWaitFor++;
@@ -205,6 +209,8 @@ void Master::WaitForResponse()
 
 		switch (msg)
 		{
+		case MSG_NO_WORK_FOUND:
+			jobsToWaitFor--;
 		case MSG_REQUEST_WORK:
 			HandleWorker(status.MPI_SOURCE);
 			break;
@@ -223,12 +229,22 @@ void Master::WaitForResponse()
 		case MSG_NO_RESULTS:
 			// add to results list
 			jobsToWaitFor--;
+			if (workersWithJobsToGive.size()) {
+				workersWithJobsToGive.remove_if([&status](int &wrk) {
+					return wrk == status.MPI_SOURCE;
+				});
+			}
 			HandleWorker(status.MPI_SOURCE);
 			break;
 
 		case MSG_RESULTS: {
 			// add to results list
 			jobsToWaitFor--;
+			if (workersWithJobsToGive.size()) {
+				workersWithJobsToGive.remove_if([&status](int &wrk) {
+					return wrk == status.MPI_SOURCE;
+				});
+			}
 
 			int resultsSize;
 			auto statusResults = MPI_Status();
@@ -296,7 +312,7 @@ void Master::DisplayMinMax()
 	cout << endl << "The shortest path is: " << minIdx << ". It has " << minJob->NodeCount() << " units";
 	cout << endl << minIdx << ". ";
 	minJob->Display();
-	cout << endl << "The longhest path is: " << maxIdx << ". It has " << maxJob->NodeCount() << " units";
+	cout << endl << "The longest path is: " << maxIdx << ". It has " << maxJob->NodeCount() << " units";
 	cout << endl << maxIdx << ". ";
 	maxJob->Display();
 }

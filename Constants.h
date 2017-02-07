@@ -6,6 +6,9 @@
 #define MSG_RESULTS 0
 #define MSG_REQUEST_WORK 1
 #define MSG_GIVE_WORK 2
+#define MSG_NO_WORK_FOUND 3
 
 #define MSG_STOP -1
 #define MSG_NO_WORK -2
+
+#define WORKER_JOB_LIMIT 1000

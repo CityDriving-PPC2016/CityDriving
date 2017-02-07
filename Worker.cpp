@@ -61,7 +61,22 @@ bool Worker::WaitForWork(int source)
 {
 	int size;
 	auto status = MPI_Status();
-	MPI_Probe(source, TAG_DISPATCH_JOB, MPI_COMM_WORLD, &status);
+	if (source != 0) {
+		int tries = 0;
+		while (tries < 100)
+		{
+			int flag;
+			MPI_Iprobe(source, TAG_DISPATCH_JOB, MPI_COMM_WORLD, &flag, &status);
+			if (!flag)
+				tries++;
+			else break;
+		}
+
+		if (tries == 100) return true;
+	}
+	else {
+		MPI_Probe(source, TAG_DISPATCH_JOB, MPI_COMM_WORLD, &status);
+	}
 	MPI_Get_count(&status, MPI_CHAR, &size);
 
 	shared_ptr<char> dataPtr(new char[size]);
@@ -72,7 +87,8 @@ bool Worker::WaitForWork(int source)
 		// message received
 		if (data[0] == MSG_NO_WORK) {
 			// no work received from another worker, register for waiting to the master
-			char msg = MSG_REQUEST_WORK;
+			launchDebugger();
+			char msg = MSG_NO_WORK_FOUND;
 			MPI_Send(&msg, 1, MPI_CHAR, 0, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD);
 			return WaitForWork();
 		}
@@ -98,24 +114,38 @@ bool Worker::WaitForWork(int source)
 
 void Worker::FindRoutes()
 {
-	for (auto it = jobs.begin(); it != jobs.end();) {
-		if (!ProcessJob(**it))
-			it = jobs.erase(it);
-		else
-			++it;
+	masterNotificationSend = false;
+	if (jobs.size()) {
+		for (auto it = jobs.begin(); it != jobs.end();) {
+			if (!ProcessJob(**it))
+				it = jobs.erase(it);
+			else
+				++it;
 
-		MPI_Status status;
-		int flag;
-		MPI_Iprobe(MPI_ANY_SOURCE, TAG_DEFER_JOB, MPI_COMM_WORLD, &flag, &status);
-		if (flag) {
-			char msg;
-			MPI_Recv(&msg, 1, MPI_CHAR, status.MPI_SOURCE, TAG_DEFER_JOB, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			if (msg == MSG_REQUEST_WORK) {
-				msg = MSG_NO_WORK;
-				MPI_Send(&msg, 1, MPI_CHAR, status.MPI_SOURCE, TAG_DISPATCH_JOB, MPI_COMM_WORLD);
+			MPI_Status status;
+			int flag;
+			MPI_Iprobe(MPI_ANY_SOURCE, TAG_DEFER_JOB, MPI_COMM_WORLD, &flag, &status);
+			if (flag) {
+				char msg;
+				MPI_Recv(&msg, 1, MPI_CHAR, status.MPI_SOURCE, TAG_DEFER_JOB, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				if (msg == MSG_REQUEST_WORK) {
+					if (jobs.size() < WORKER_JOB_LIMIT) {
+						msg = MSG_NO_WORK;
+						MPI_Send(&msg, 1, MPI_CHAR, status.MPI_SOURCE, TAG_DISPATCH_JOB, MPI_COMM_WORLD);
+					}
+					else {
+						GiveWorkToWorker(status.MPI_SOURCE, **it);
+						it = jobs.erase(it);
+					}
+					masterNotificationSend = false;
+				}
+			}
+			if (!masterNotificationSend && jobs.size() >= WORKER_JOB_LIMIT) {
+				char msg = MSG_GIVE_WORK;
+				MPI_Send(&msg, 1, MPI_CHAR, 0, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD);
+				masterNotificationSend = true;
 			}
 		}
-		// send message to master if there are to much jobs in queue to defer to other workers.
 	}
 
 	auto size = jobs.size();
