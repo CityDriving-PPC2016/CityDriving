@@ -1,4 +1,3 @@
-#include "Debugger.h"
 #include "Constants.h"
 #include "Worker.h"
 #include "Graph.h"
@@ -87,7 +86,6 @@ bool Worker::WaitForWork(int source)
 		// message received
 		if (data[0] == MSG_NO_WORK) {
 			// no work received from another worker, register for waiting to the master
-			launchDebugger();
 			char msg = MSG_NO_WORK_FOUND;
 			MPI_Send(&msg, 1, MPI_CHAR, 0, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD);
 			return WaitForWork();

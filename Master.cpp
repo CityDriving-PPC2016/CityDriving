@@ -1,4 +1,3 @@
-#include "Debugger.h"
 #include "Constants.h"
 #include "Master.h"
 #include "Graph.h"
@@ -59,6 +58,7 @@ Master::Master()
 	minJob = Job::MinJobPtr;
 	maxJob = Job::MaxJobPtr;
 	minIdx = maxIdx = -1;
+	totalElapsedTime = 0;
 }
 
 void Master::ReadGraph(bool wOut) {
@@ -94,6 +94,7 @@ void Master::ReadGraph(bool wOut) {
 
 void Master::PrepareJobs(int worldSize)
 {
+	auto startTime = MPI_Wtime();
 	int workerCount = worldSize - 1;
 	vector<int> visited = vector<int>(graph->Size(), -2);
 	vector<int> childCount = vector<int>(graph->Size(), 0);
@@ -152,16 +153,18 @@ void Master::PrepareJobs(int worldSize)
 			}
 		}
 	}
-
+	totalElapsedTime += MPI_Wtime() - startTime;
 }
 
 void Master::DispatchGraph()
 {
+	auto startTime = MPI_Wtime();
 	shared_ptr<char> data;
 	int dataSize = graph->data(data);
 
 	MPI_Bcast(&dataSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Bcast(data.get(), dataSize, MPI_CHAR, 0, MPI_COMM_WORLD);
+	totalElapsedTime += MPI_Wtime() - startTime;
 }
 
 void Master::DispatchEndPoint()
@@ -171,6 +174,8 @@ void Master::DispatchEndPoint()
 
 void Master::DispatchJobs(int worldSize)
 {
+	auto startTime = MPI_Wtime();
+
 	jobsToWaitFor = 0;
 	int workerCount = worldSize - 1;
 	int jobsToDispatch = 0;
@@ -197,6 +202,7 @@ void Master::DispatchJobs(int worldSize)
 			waitingWorkers.push_back(i + 1);
 		}
 	}
+	totalElapsedTime += MPI_Wtime() - startTime;
 }
 
 void Master::WaitForResponse()
@@ -205,6 +211,8 @@ void Master::WaitForResponse()
 	while (workersWithJobsToGive.size() || jobsToWaitFor > 0) {
 		char msg;
 		MPI_Status status;
+		auto startTime = MPI_Wtime();
+		double endTime = startTime;
 		MPI_Recv(&msg, 1, MPI_CHAR, MPI_ANY_SOURCE, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD, &status);
 
 		switch (msg)
@@ -213,6 +221,7 @@ void Master::WaitForResponse()
 			jobsToWaitFor--;
 		case MSG_REQUEST_WORK:
 			HandleWorker(status.MPI_SOURCE);
+			endTime = MPI_Wtime();
 			break;
 
 		case MSG_GIVE_WORK:
@@ -224,6 +233,7 @@ void Master::WaitForResponse()
 			else {
 				workersWithJobsToGive.push_back(status.MPI_SOURCE);
 			}
+			endTime = MPI_Wtime();
 			break;
 
 		case MSG_NO_RESULTS:
@@ -235,6 +245,7 @@ void Master::WaitForResponse()
 				});
 			}
 			HandleWorker(status.MPI_SOURCE);
+			endTime = MPI_Wtime();
 			break;
 
 		case MSG_RESULTS: {
@@ -255,10 +266,12 @@ void Master::WaitForResponse()
 			MPI_Recv(data.get(), resultsSize, MPI_CHAR, status.MPI_SOURCE, TAG_MESSAGE_FROM_WORKER, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			int jobSize;
 			auto end = data.get();
+
 			memcpy(&jobSize, end, sizeof(int));
 			end += sizeof(int);
 			resultsSize -= sizeof(int);
 
+			endTime = MPI_Wtime();
 			for (int i = 0; i < resultsSize / jobSize; i++) {
 				shared_ptr<Job> job(new Job(end, jobSize));
 				end += jobSize;
@@ -273,6 +286,7 @@ void Master::WaitForResponse()
 			throw "Unrecognized message received by master";
 			break;
 		}
+		totalElapsedTime += max(0.0, endTime - startTime);
 	}
 
 	// Send stop message
@@ -315,6 +329,7 @@ void Master::DisplayMinMax()
 	cout << endl << "The longest path is: " << maxIdx << ". It has " << maxJob->NodeCount() << " units";
 	cout << endl << maxIdx << ". ";
 	maxJob->Display();
+	cout << endl << "Time spent: " << totalElapsedTime << endl;
 }
 
 void Master::SetSearchPoints(int start, int end)
