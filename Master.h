@@ -32,7 +32,7 @@ private:
 
 	int startPoint, endPoint;
 	list<shared_ptr<Job>> jobs;
-	//list<shared_ptr<Job>> results;
+	double totalElapsedTime;
 	shared_ptr<Job> minJob, maxJob;
 	int minIdx, maxIdx;
 	list<int> waitingWorkers;
