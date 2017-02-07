@@ -16,6 +16,7 @@ private:
 	unique_ptr<Graph> graph;
 	list<shared_ptr<Job>> jobs;
 	int endPoint;
+	bool masterNotificationSend;
 	void SendGiveWorkNotification();
 	void GiveWorkToWorker(int workerId, Job job);
 

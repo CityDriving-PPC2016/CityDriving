@@ -19,17 +19,25 @@ int main(int argc, char* argv[]) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	if (rank == 0) {
 		// Master
-
+		streambuf* oldStream;
+		ifstream input;
 		if (argc > 1) {
 			char* inputFile = argv[1];
-			ifstream input(inputFile);
-			freopen(inputFile, "r", stdin);
+			input = ifstream(inputFile);
+			oldStream = cin.rdbuf(input.rdbuf());
 		}
 
 		Master master;
 		master.ReadGraph();
-		master.SetSearchPoints(22, 29);
-		//launchDebugger();
+		cin.rdbuf(oldStream);
+
+		int startNode = 22, endNode = 29;
+		cout << "Input the start node:";
+		cin >> startNode;
+		cout << "Input the end node:";
+		cin >> endNode;
+
+		master.SetSearchPoints(startNode, endNode);
 		master.PrepareJobs(worldSize);
 
 		master.DispatchGraph();
